@@ -126,6 +126,7 @@
                 46: 'delete'
             },
             keyState = {},
+            lastOnViewChangeReject,
 
             /********************************************************************************
              *
@@ -504,6 +505,8 @@
                     currentViewMode = Math.max(minViewModeNumber, Math.min(3, currentViewMode + dir));
                 }
                 widget.find('.datepicker > div').hide().filter('.datepicker-' + datePickerModes[currentViewMode].clsName).show();
+
+                onViewChange(datePickerModes[currentViewMode].clsName, viewDate, widget);
             },
 
             fillDow = function () {
@@ -925,11 +928,34 @@
 
                 input.blur();
 
+                rejectLastOnViewChange();
+
                 return picker;
             },
 
             clear = function () {
                 setValue(null);
+            },
+
+            onViewChange = function (viewMode, viewDate, widget) {
+                var fn = options.onViewChange;
+
+                if (typeof fn === 'function') {
+                    rejectLastOnViewChange();
+
+                    lastOnViewChangeReject = fn(viewMode, viewDate, widget);
+
+                    if (typeof lastOnViewChangeReject !== 'function') {
+                        console.error('You must return reject function from beforeChangeView callback');
+                    }
+                }
+            },
+
+            rejectLastOnViewChange = function () {
+                if (typeof lastOnViewChangeReject === 'function') {
+                    lastOnViewChangeReject();
+                    lastOnViewChangeReject = null;
+                }
             },
 
             /********************************************************************************
@@ -941,15 +967,21 @@
                 next: function () {
                     var navFnc = datePickerModes[currentViewMode].navFnc;
                     viewDate.add(datePickerModes[currentViewMode].navStep, navFnc);
+
                     fillDate();
                     viewUpdate(navFnc);
+
+                    onViewChange(datePickerModes[currentViewMode].clsName, viewDate, widget);
                 },
 
                 previous: function () {
                     var navFnc = datePickerModes[currentViewMode].navFnc;
                     viewDate.subtract(datePickerModes[currentViewMode].navStep, navFnc);
+
                     fillDate();
                     viewUpdate(navFnc);
+
+                    onViewChange(datePickerModes[currentViewMode].clsName, viewDate, widget);
                 },
 
                 pickerSwitch: function () {
@@ -1224,6 +1256,7 @@
                 notifyEvent({
                     type: 'dp.show'
                 });
+
                 return picker;
             },
 
@@ -2297,6 +2330,8 @@
             return picker;
         };
 
+        picker.onViewChange = function (fn) {};
+
         // initializing element and component attributes
         if (element.is('input')) {
             input = element;
@@ -2547,6 +2582,7 @@
         disabledTimeIntervals: false,
         disabledHours: false,
         enabledHours: false,
-        viewDate: false
+        viewDate: false,
+        onViewChange: false
     };
 }));
